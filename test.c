@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <signal.h>
+#include <sys/ucontext.h>
 
 extern void trap_and_check (void);
 

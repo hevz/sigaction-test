@@ -1,8 +1,24 @@
     .text
+
     .global trap_and_check
 trap_and_check:
     break   0
+    b       .Lcheck
 
+    .global syscall_and_check
+syscall_and_check:
+    move    $a7, $a0
+    move    $a0, $a1
+    move    $a1, $a2
+    move    $a2, $a3
+    move    $a3, $a4
+    move    $a4, $a5
+    move    $a5, $a6
+    move    $a6, $a7
+    syscall 0
+    nop
+
+.Lcheck:
     bne     $r1, $r2, .Lsegv
     bne     $r2, $r3, .Lsegv
     bne     $r3, $r4, .Lsegv

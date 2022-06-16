@@ -1,8 +1,10 @@
 check : test
-	./test && echo PASS
+	./test read && echo PASS
+	./test sigreturn && echo PASS
+	./test sigsuspend && echo PASS
 
 test : test.c check.S
-	gcc -O3 -o $@ $^
+	gcc -O3 -o $@ $^ -pthread
 
 clean :
 	rm -f test

@@ -1,8 +1,15 @@
 #include <stdio.h>
 #include <signal.h>
+#include <string.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <sys/syscall.h>
 #include <sys/ucontext.h>
 
 extern void trap_and_check (void);
+extern void syscall_and_check (int sysnum, ...);
+
+static pthread_t thread_main;
 
 static void
 sig_handler (int sig, siginfo_t *info, void *ucontext)
@@ -16,6 +23,46 @@ sig_handler (int sig, siginfo_t *info, void *ucontext)
     uc->uc_mcontext.__pc += 4;
 }
 
+static void *
+thread_handler (void *data)
+{
+    usleep (1000);
+
+    pthread_kill (thread_main, SIGTRAP);
+}
+
+static void
+sigreturn_test (void)
+{
+    trap_and_check ();
+}
+
+static void
+sigsuspend_test (void)
+{
+    pthread_t thread_emiter;
+    sigset_t mask;
+
+    sigemptyset (&mask);
+
+    thread_main = pthread_self ();
+    pthread_create (&thread_emiter, NULL, thread_handler, NULL);
+
+    syscall_and_check (__NR_rt_sigsuspend, &mask, 16);
+}
+
+static void
+read_test (void)
+{
+    pthread_t thread_emiter;
+    char buf[512];
+
+    thread_main = pthread_self ();
+    pthread_create (&thread_emiter, NULL, thread_handler, NULL);
+
+    syscall_and_check (__NR_read, 0, buf, sizeof (buf));
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -23,10 +70,20 @@ main (int argc, char *argv[])
 
     act.sa_sigaction = sig_handler;
     act.sa_flags = SA_SIGINFO;
-
     sigaction (SIGTRAP, &act, NULL);
 
-    trap_and_check ();
+    if (argc < 2) {
+        fprintf (stderr, "%s [ sigreturn | sigsuspend | read ]\n", argv[0]);
+        return -1;
+    }
+
+    if (strcmp (argv[1], "sigreturn") == 0) {
+        sigreturn_test ();
+    } else if (strcmp (argv[1], "sigsuspend") == 0) {
+        sigsuspend_test ();
+    } else {
+        read_test ();
+    }
 
     return 0;
 }

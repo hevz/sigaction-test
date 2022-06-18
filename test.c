@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <sys/syscall.h>
 #include <sys/ucontext.h>
+#include <linux/version.h>
 
 extern void trap_and_check (void);
 extern void syscall_and_check (int sysnum, ...);
@@ -48,7 +49,11 @@ sigsuspend_test (void)
     thread_main = pthread_self ();
     pthread_create (&thread_emiter, NULL, thread_handler, NULL);
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5,0,0)
+    syscall_and_check (__NR_rt_sigsuspend, &mask, 8);
+#else
     syscall_and_check (__NR_rt_sigsuspend, &mask, 16);
+#endif
 }
 
 static void

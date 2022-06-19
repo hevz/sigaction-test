@@ -1,11 +1,16 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <signal.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 #include <pthread.h>
 #include <sys/syscall.h>
 #include <sys/ucontext.h>
-#include <linux/version.h>
+
+#define ALIGN_UP(addr, align) ((addr + (typeof (addr))align - 1) & ~((typeof (addr))align - 1))
+#define __NSIG_WORDS (ALIGN_UP ((_NSIG - 1), ULONG_WIDTH) / ULONG_WIDTH)
+#define __NSIG_BYTES (__NSIG_WORDS * (ULONG_WIDTH / UCHAR_WIDTH))
 
 extern void trap_and_check (void);
 extern void syscall_and_check (int sysnum, ...);
@@ -49,11 +54,7 @@ sigsuspend_test (void)
     thread_main = pthread_self ();
     pthread_create (&thread_emiter, NULL, thread_handler, NULL);
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(5,0,0)
-    syscall_and_check (__NR_rt_sigsuspend, &mask, 8);
-#else
-    syscall_and_check (__NR_rt_sigsuspend, &mask, 16);
-#endif
+    syscall_and_check (__NR_rt_sigsuspend, &mask, __NSIG_BYTES);
 }
 
 static void
